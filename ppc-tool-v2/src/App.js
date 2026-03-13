@@ -302,10 +302,13 @@ function ResultPanel({ result, label, onCopy, copied, showDownloads }) {
   const [gdocToast, setGdocToast] = useState(false);
 
   const handleGoogleDoc = () => {
+    // Download as .doc and open Google Docs simultaneously
     downloadWordDoc(result, label);
-    setTimeout(() => window.open("https://drive.google.com/drive/my-drive", "_blank"), 400);
     setGdocToast(true);
-    setTimeout(() => setGdocToast(false), 9000);
+    setTimeout(() => {
+      window.open("https://docs.google.com/document/create", "_blank");
+      setTimeout(() => setGdocToast(false), 4000);
+    }, 600);
   };
 
   return (
@@ -338,8 +341,8 @@ function ResultPanel({ result, label, onCopy, copied, showDownloads }) {
         </div>
       </div>
       {gdocToast && (
-        <div style={{ background: "#f0f7f0", border: "1px solid #c3dfc3", padding: "10px 22px", fontSize: 12.5, color: G, fontWeight: 500, lineHeight: 1.7 }}>
-          ✅ <strong>Report downloaded.</strong> In Google Drive (just opened): drag your <code>.doc</code> file in → right-click it → <strong>Open with → Google Docs</strong>. It will convert automatically.
+        <div style={{ background: "#f0f7f0", border: "1px solid #c3dfc3", borderRadius: 0, padding: "9px 22px", fontSize: 12.5, color: G, fontWeight: 500 }}>
+          ✓ .doc file downloaded → Go to the new Google Docs tab → File → Open → Upload your .doc file
         </div>
       )}
       <div style={{ padding: "26px 22px", fontSize: 13.5, lineHeight: 1.85, color: "#444", maxHeight: 560, overflowY: "auto", fontWeight: 300 }}
@@ -500,95 +503,49 @@ function ReportTab({ apiKey }) {
         return `--- ${slot?.label?.toUpperCase() || id.toUpperCase()} (${f.name}) ---\n${f.content}`;
       }).join("\n\n");
 
-      const prompt = `You are a senior PPC consultant writing a professional monthly performance report for VM Consultancy. Your reports are read directly by clients — they must be data-led, precise, and written with expert confidence.
+      const prompt = `You are an expert PPC analyst and report writer for VM Consultancy. Produce a professional ${reportType} paid search performance report for ${clientName || "the client"} covering ${period || "the reporting period"}.
 
-CLIENT: ${clientName || "Client"}
-PERIOD: ${period || "Reporting Period"}
-REPORT TYPE: ${reportType === "monthly" ? "Monthly" : "Weekly"}
-
-DATA PROVIDED:
+You have been provided with the following data:
 ${sections}
 
----
+Produce a comprehensive report in this EXACT structure:
 
-Write the report using this exact section structure. Only include optional sections if the relevant data was provided. Every number must come directly from the data. Do not invent or estimate figures.
-
----
+# ${clientName || "Client"} | Paid Search ${reportType === "monthly" ? "Monthly" : "Weekly"} Report | ${period || "[Period]"}
 
 ## Executive Summary
+Write 3-5 sentences covering: overall performance vs prior period, key wins, key concerns, and the #1 recommended action.
 
-2-4 sentences. Lead with the single most important story in the data. Cover: key performance driver, any important context (methodology changes, learning phases, seasonality), and outlook for next period. Write in past tense. Be direct — no filler phrases like "it is worth noting".
+## Key Metrics
+Present the top-level KPIs in a clear format:
+- Revenue / Total Conversions
+- Ad Spend (MoM or WoW change)
+- ROAS
+- Clicks & Impressions
+- CPC, CTR, Conv. Rate
+- Quality Score (if available)
+- Impression Share (if available)
 
----
+## ${reportType === "monthly" ? "3-Month" : "4-Week"} Trend
+Show the most important metrics across the last ${reportType === "monthly" ? "3 months" : "4 weeks"} in a markdown table. If you only have one period of data, note that and present what's available.
 
-## KPIs
+## Campaign Performance Breakdown
+For each campaign: Spend | Clicks | Conversions | Revenue | ROAS | CPA | Key Observation
 
-Pick the 4-6 most meaningful KPIs for this client based on what metrics exist in the data. For each: metric name, current value, MoM or WoW change as % with + or − sign. Choose metrics that matter for this client type — e.g. for ecommerce: Revenue, ROAS, Spend, Conversions; for lead gen: Spend, Leads, CPA, CPC; for SaaS/freemium: Leads, Customers, CPL, Lead-to-Customer rate. Always include Spend.
+${files.adgroups ? "## Ad Group Analysis\nTop and bottom performing ad groups with actionable insight.\n" : ""}
+${files.keywords ? "## Keyword Performance\nTop performing keywords, low QS keywords to address, and keyword-level recommendations.\n" : ""}
+${files.searches ? "## Search Term Insights\nTop intent themes from search queries, recommended new negatives, potential new keyword opportunities.\n" : ""}
+${files.geo ? "## Geographic Performance\nTop and bottom markets, bid adjustment recommendations.\n" : ""}
+${files.ads ? "## Ad Creative Performance\nTop and bottom performing ads/headlines, creative recommendations.\n" : ""}
 
-Format exactly like this:
-**[METRIC NAME]:** [Value] ([+/−X%] MoM)
+## Quality Score Summary
+If QS data is available, show distribution and click-weighted average. Flag any keywords below QS 6.
 
----
+## Next Steps
+List 5-7 specific, prioritised actions for the next ${reportType === "monthly" ? "month" : "week"} in this format:
+**Priority [1-7]: [Action Title]**
+[One sentence describing exactly what to do and expected impact]
 
-## Performance Trend
-
-Markdown table of key metrics across available periods (up to 5 months or weeks). Bold the current period column. Include a MoM/WoW % change column where calculable.
-
----
-
-## Campaign Breakdown
-
-Markdown table: Campaign | Spend | Clicks | Conv. | CPA or ROAS | [most relevant metric]. Bold the totals row.
-
-Then a short paragraph per campaign (no sub-headers): lead with the key metric (revenue, ROAS, or CPA), explain the reason behind performance, flag anomalies, state one specific recommended action.
-
----
-
-${files.geo ? `## Geographic Performance
-
-Markdown table sorted by ROAS descending: Geo | Spend | Leads/Conv. | CPL/CPA | Revenue | ROAS. Mark underperforming geos with a down arrow.
-
-2-3 sentences: top geo, worst geo, budget reallocation recommendation.
-
----
-
-` : ""}${files.keywords ? `## Keyword Performance
-
-Markdown table: Keyword | Campaign | QS | Clicks | Conv. | CPC | CPA
-
-2-3 sentences: highlight top performer, flag zero-click or low-QS keywords, state action.
-
----
-
-` : ""}${files.searches ? `## Search Term Analysis
-
-Markdown table of top converting terms: Search Term | Campaign | Clicks | Conv. | Cost | CPA
-
-2-3 sentences: intent patterns, wasted spend, negative keyword opportunities.
-
----
-
-` : ""}## Quality Score Distribution
-
-Only include this section if QS data is present. Markdown table: QS | Keywords | Clicks | Click % | Spend | Spend %. 1-2 sentences: click-weighted average, % of spend from QS 7+, any weak tiers to address.
-
----
-
-## Next Steps — ${period ? period.split(" ")[0] : "Next Period"}
-
-4-6 bullet points. Each: one specific action + expected impact or reasoning. Reference actual campaign names, metrics, and thresholds from the data. No vague recommendations.
-
-Format: ● [Specific action] — [expected impact or reason]
-
----
-
-RULES:
-- Use exact numbers from the data. Do not round unless the source data is already rounded.
-- Confident expert tone. No hedging.
-- Use − not - for negative changes.
-- Use whatever currency appears in the data.
-- Skip any section entirely if the data is not present — do not write placeholder text.
-- Only add a methodology note if there is a genuine data integrity caveat (e.g. mid-month conversion goal change, attribution window change, tracking outage).``;
+Use markdown formatting throughout. Be specific with numbers from the data. Write in a confident, professional tone consistent with a senior PPC consultant.`;
 
       const res = await fetch(ANTHROPIC_API_URL, {
         method: "POST",
