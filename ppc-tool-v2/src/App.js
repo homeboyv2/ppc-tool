@@ -3,6 +3,8 @@ import React, { useState, useRef, useCallback } from "react";
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const VM_LOGO = "data:image/png;base64,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";
 
+const ACCESS_PASSWORD = "vmconsultancy2025";
+
 // ─── ANALYSIS MODULES ───────────────────────────────────────────────────────
 const ANALYSIS_MODULES = [
   {
@@ -104,7 +106,59 @@ const GLOBAL_CSS = `
   @keyframes fadeUp { from { opacity:0;transform:translateY(8px); } to { opacity:1;transform:translateY(0); } }
   .group-label { font-size:10px;font-weight:700;letter-spacing:0.12em;color:#ccc;text-transform:uppercase;margin:18px 0 8px;padding-left:2px; }
   ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: #f8f8f8; } ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+  .shake { animation: shake 0.4s ease; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
 `;
+
+// ─── PASSWORD GATE ────────────────────────────────────────────────────────────
+function PasswordGate({ onUnlock }) {
+  const [pw, setPw] = useState("");
+  const [error, setError] = useState(false);
+  const [shake, setShake] = useState(false);
+  const inputRef = useRef();
+
+  const attempt = () => {
+    if (pw === ACCESS_PASSWORD) {
+      onUnlock();
+    } else {
+      setError(true);
+      setShake(true);
+      setPw("");
+      setTimeout(() => setShake(false), 450);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', Helvetica, Arial, sans-serif" }}>
+      <style>{GLOBAL_CSS}</style>
+      <div style={{ textAlign: "center", marginBottom: 48 }}>
+        <img src={VM_LOGO} alt="VM" style={{ width: 48, height: 48, borderRadius: 10, background: G, marginBottom: 20 }} />
+        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 800, color: "#111", letterSpacing: "-0.02em", marginBottom: 8 }}>PPC Intelligence</div>
+        <div style={{ fontSize: 13, color: "#aaa", fontWeight: 300 }}>VM Consultancy · Private Access</div>
+      </div>
+      <div className={shake ? "shake" : ""} style={{ width: "100%", maxWidth: 340, padding: "0 20px" }}>
+        <div style={{ marginBottom: 10, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "#bbb", textTransform: "uppercase" }}>Access Password</div>
+        <input
+          ref={inputRef}
+          type="password"
+          value={pw}
+          onChange={e => { setPw(e.target.value); setError(false); }}
+          onKeyDown={e => e.key === "Enter" && attempt()}
+          placeholder="Enter password"
+          autoFocus
+          style={{ width: "100%", background: "#fafafa", border: `1.5px solid ${error ? "#f5a0a0" : "#e4e4e4"}`, borderRadius: 10, padding: "11px 16px", fontSize: 14, color: "#111", outline: "none", marginBottom: 10, transition: "border-color 0.2s" }}
+        />
+        {error && <div style={{ fontSize: 12, color: "#c00", marginBottom: 10, textAlign: "center" }}>Incorrect password. Try again.</div>}
+        <button onClick={attempt}
+          style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 4px 14px rgba(10,61,10,0.2)" }}>
+          Unlock →
+        </button>
+      </div>
+      <div style={{ position: "absolute", bottom: 24, fontSize: 11.5, color: "#ddd" }}>© VM Consultancy 2025</div>
+    </div>
+  );
+}
 
 // ─── RESULT PANEL ─────────────────────────────────────────────────────────────
 function ResultPanel({ result, label, onCopy, copied }) {
@@ -432,10 +486,13 @@ Use markdown formatting throughout. Be specific with numbers from the data. Writ
 
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
 export default function App() {
+  const [unlocked, setUnlocked] = useState(false);
   const [tab, setTab] = useState("analysis");
   const [apiKey, setApiKey] = useState("");
   const [saved, setSaved] = useState(false);
   const [keyError, setKeyError] = useState("");
+
+  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
 
   return (
     <div style={{ minHeight: "100vh", background: "#fff", color: "#111", fontFamily: "'DM Sans', Helvetica, Arial, sans-serif", display: "flex", flexDirection: "column" }}>
