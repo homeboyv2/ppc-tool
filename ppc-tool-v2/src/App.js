@@ -574,7 +574,7 @@ Only include this section if QS data is present. Markdown table: QS | Keywords |
 
 ---
 
-## Next Steps — ${"`"}${"`"}${"`"}${period ? "${period}".split(" ")[0] : "Next Period"}${"`"}${"`"}${"`"}
+## Next Steps — ${period ? period.split(" ")[0] : "Next Period"}
 
 4-6 bullet points. Each: one specific action + expected impact or reasoning. Reference actual campaign names, metrics, and thresholds from the data. No vague recommendations.
 
