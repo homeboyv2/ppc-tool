@@ -160,19 +160,191 @@ function PasswordGate({ onUnlock }) {
   );
 }
 
+// ─── DOWNLOAD HELPERS ────────────────────────────────────────────────────────
+
+function buildWordBlob(result, label) {
+  // Generate a rich .docx-compatible HTML that Word/Google Docs imports well
+  const htmlContent = `
+<!DOCTYPE html>
+<html xmlns:o='urn:schemas-microsoft-com:office:office'
+      xmlns:w='urn:schemas-microsoft-com:office:word'
+      xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset='utf-8'>
+<title>${label}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 11pt; color: #222; margin: 2cm; }
+  h1 { font-size: 22pt; font-weight: bold; color: #1a4a1a; border-bottom: 2px solid #1a4a1a; padding-bottom: 6pt; margin-top: 18pt; margin-bottom: 8pt; }
+  h2 { font-size: 16pt; font-weight: bold; color: #1a4a1a; border-bottom: 1px solid #2e6b2e; padding-bottom: 4pt; margin-top: 14pt; margin-bottom: 6pt; }
+  h3 { font-size: 11pt; font-weight: bold; color: #1a4a1a; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 10pt; margin-bottom: 4pt; }
+  p { line-height: 1.65; margin-bottom: 8pt; }
+  ul { margin-left: 18pt; margin-bottom: 8pt; }
+  li { line-height: 1.65; margin-bottom: 3pt; }
+  strong { font-weight: bold; color: #111; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 12pt; }
+  th { background: #f5f5f5; font-weight: bold; font-size: 9pt; color: #777; text-transform: uppercase; letter-spacing: 0.04em; padding: 6pt 8pt; border: 1px solid #e0e0e0; text-align: left; }
+  td { padding: 6pt 8pt; border: 1px solid #e0e0e0; font-size: 10pt; color: #444; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .kpi-row { display: flex; gap: 12pt; margin-bottom: 14pt; }
+  .kpi-box { border: 1px solid #e0e0e0; border-radius: 4pt; padding: 10pt 14pt; flex: 1; }
+  .kpi-label { font-size: 8pt; color: #aaa; text-transform: uppercase; letter-spacing: 0.08em; }
+  .kpi-value { font-size: 22pt; font-weight: bold; color: #111; line-height: 1.2; }
+  .kpi-delta-pos { font-size: 9pt; font-weight: bold; color: #1a6b1a; }
+  .kpi-delta-neg { font-size: 9pt; font-weight: bold; color: #c0392b; }
+  .page-header { color: #aaa; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4pt; }
+  .report-title { font-size: 26pt; font-weight: bold; color: #111; line-height: 1.15; margin-bottom: 4pt; }
+  .report-sub { font-size: 11pt; color: #aaa; margin-bottom: 0; }
+  hr { border: none; border-bottom: 2px solid #2e6b2e; margin: 10pt 0 16pt; }
+</style>
+</head>
+<body>
+<p class="page-header">VM CONSULTANCY</p>
+<p class="report-title">${label}</p>
+<p class="report-sub">Performance Report</p>
+<hr/>
+${result
+  .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+  .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+  .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+  .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  .replace(/^- (.+)$/gm, '<li>$1</li>')
+  .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
+  .replace(/\n\n/g, '</p><p>')
+  .replace(/^(?!<[hup])/gm, '<p>')
+  .replace(/(?<![>])$/gm, '</p>')
+}
+</body>
+</html>`;
+  return new Blob([htmlContent], { type: "application/msword" });
+}
+
+function downloadWordDoc(result, label) {
+  const blob = buildWordBlob(result, label);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${label.replace(/[^a-zA-Z0-9 ]/g, "").replace(/ /g, "_")}_Report.doc`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function openGoogleDoc(result, label) {
+  // Create the HTML blob, upload to a data URL, open Google Docs with it
+  // Best available approach: copy to clipboard with instructions + open Google Docs
+  const htmlContent = buildWordBlob(result, label);
+  const url = URL.createObjectURL(htmlContent);
+  // Open Google Docs new document
+  const gdocsUrl = "https://docs.google.com/document/create";
+  window.open(gdocsUrl, "_blank");
+  // Show a small toast to prompt user to paste
+  URL.revokeObjectURL(url);
+}
+
+function downloadPDF(result, label) {
+  // Browser print-to-PDF with VM styling
+  const w = window.open("", "_blank");
+  w.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<title>${label}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', Arial, sans-serif; font-size: 11pt; color: #444; padding: 0; }
+  .page { max-width: 794px; margin: 0 auto; padding: 40px 50px 60px; }
+  .header-bar { border-bottom: 2.5px solid #2e6b2e; padding-bottom: 14px; margin-bottom: 24px; }
+  .vm-label { font-size: 8pt; font-weight: 700; color: #1a4a1a; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 4px; }
+  .report-title { font-size: 26pt; font-weight: 700; color: #111; line-height: 1.15; margin-bottom: 3px; }
+  .report-sub { font-size: 10pt; color: #aaa; }
+  h1 { font-size: 18pt; font-weight: 700; color: #111; margin: 22px 0 8px; }
+  h2 { font-size: 14pt; font-weight: 700; color: #111; border-bottom: 1.5px solid #2e6b2e; padding-bottom: 5px; margin: 18px 0 7px; }
+  h3 { font-size: 9pt; font-weight: 700; color: #1a4a1a; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 4px; }
+  p { line-height: 1.7; margin-bottom: 8px; color: #444; font-size: 10pt; }
+  ul { margin-left: 16px; margin-bottom: 10px; }
+  li { line-height: 1.65; margin-bottom: 3px; font-size: 10pt; color: #444; }
+  strong { font-weight: 700; color: #111; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0 14px; font-size: 9.5pt; }
+  th { background: #f5f5f5; font-weight: 700; font-size: 7.5pt; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 8px; border: 1px solid #e0e0e0; text-align: left; }
+  td { padding: 5px 8px; border: 1px solid #e0e0e0; color: #444; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .footer { margin-top: 40px; border-top: 1px solid #e0e0e0; padding-top: 10px; font-size: 8pt; color: #aaa; text-align: center; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header-bar">
+    <div class="vm-label">VM CONSULTANCY</div>
+    <div class="report-title">${label}</div>
+    <div class="report-sub">Paid Search · Performance Report</div>
+  </div>
+  <div class="content">
+${result
+  .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+  .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+  .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+  .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  .replace(/^- (.+)$/gm, '<li>$1</li>')
+  .replace(/(<li>[^\n]*\n?)+/g, m => `<ul>${m}</ul>`)
+  .split('\n\n').map(p => p.startsWith('<') ? p : `<p>${p}</p>`).join('\n')
+}
+  </div>
+  <div class="footer">VM Consultancy · ${label} · Generated ${new Date().toLocaleDateString('en-GB', {month:'long',year:'numeric'})}</div>
+</div>
+<script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); }</script>
+</body>
+</html>`);
+  w.document.close();
+}
+
 // ─── RESULT PANEL ─────────────────────────────────────────────────────────────
-function ResultPanel({ result, label, onCopy, copied }) {
+function ResultPanel({ result, label, onCopy, copied, showDownloads }) {
+  const [gdocToast, setGdocToast] = useState(false);
+
+  const handleGoogleDoc = () => {
+    // Download as .doc and open Google Docs simultaneously
+    downloadWordDoc(result, label);
+    setGdocToast(true);
+    setTimeout(() => {
+      window.open("https://docs.google.com/document/create", "_blank");
+      setTimeout(() => setGdocToast(false), 4000);
+    }, 600);
+  };
+
   return (
     <div className="fade-in" style={{ background: "#fff", border: "1.5px solid #ebebeb", borderRadius: 14, overflow: "hidden", boxShadow: "0 6px 32px rgba(0,0,0,0.06)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 22px", borderBottom: "1px solid #f0f0f0", background: "#fafafa" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 22px", borderBottom: "1px solid #f0f0f0", background: "#fafafa", flexWrap: "wrap", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: G, display: "inline-block" }} />
           <span style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>{label} — Complete</span>
         </div>
-        <button onClick={onCopy} style={{ background: "#fff", border: "1px solid #e4e4e4", borderRadius: 6, padding: "5px 14px", fontSize: 12, color: "#666", cursor: "pointer", fontWeight: 500 }}>
-          {copied ? "✓ Copied" : "Copy"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {showDownloads && (
+            <>
+              <button onClick={() => downloadPDF(result, label)}
+                style={{ background: "#fff", border: "1px solid #e4e4e4", borderRadius: 6, padding: "5px 13px", fontSize: 12, color: "#444", cursor: "pointer", fontWeight: 500, display: "flex", alignItems: "center", gap: 5 }}>
+                📄 PDF
+              </button>
+              <button onClick={() => downloadWordDoc(result, label)}
+                style={{ background: "#fff", border: "1px solid #e4e4e4", borderRadius: 6, padding: "5px 13px", fontSize: 12, color: "#444", cursor: "pointer", fontWeight: 500, display: "flex", alignItems: "center", gap: 5 }}>
+                📝 Word
+              </button>
+              <button onClick={handleGoogleDoc}
+                style={{ background: "#fff", border: "1px solid #e4e4e4", borderRadius: 6, padding: "5px 13px", fontSize: 12, color: "#444", cursor: "pointer", fontWeight: 500, display: "flex", alignItems: "center", gap: 5 }}>
+                🟢 Google Doc
+              </button>
+            </>
+          )}
+          <button onClick={onCopy} style={{ background: "#fff", border: "1px solid #e4e4e4", borderRadius: 6, padding: "5px 14px", fontSize: 12, color: "#666", cursor: "pointer", fontWeight: 500 }}>
+            {copied ? "✓ Copied" : "Copy"}
+          </button>
+        </div>
       </div>
+      {gdocToast && (
+        <div style={{ background: "#f0f7f0", border: "1px solid #c3dfc3", borderRadius: 0, padding: "9px 22px", fontSize: 12.5, color: G, fontWeight: 500 }}>
+          ✓ .doc file downloaded → Go to the new Google Docs tab → File → Open → Upload your .doc file
+        </div>
+      )}
       <div style={{ padding: "26px 22px", fontSize: 13.5, lineHeight: 1.85, color: "#444", maxHeight: 560, overflowY: "auto", fontWeight: 300 }}
         dangerouslySetInnerHTML={{ __html: formatMd(result) }} />
     </div>
@@ -479,7 +651,7 @@ Use markdown formatting throughout. Be specific with numbers from the data. Writ
       </div>
 
       {/* Result */}
-      {result && <ResultPanel result={result} label={`${clientName || "Client"} ${reportType === "monthly" ? "Monthly" : "Weekly"} Report`} onCopy={() => { navigator.clipboard.writeText(result); setCopied(true); setTimeout(() => setCopied(false), 2000); }} copied={copied} />}
+      {result && <ResultPanel result={result} label={`${clientName || "Client"} ${reportType === "monthly" ? "Monthly" : "Weekly"} Report`} onCopy={() => { navigator.clipboard.writeText(result); setCopied(true); setTimeout(() => setCopied(false), 2000); }} copied={copied} showDownloads={true} />}
     </div>
   );
 }
